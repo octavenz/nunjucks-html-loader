@@ -2,6 +2,7 @@ var utils = require('loader-utils');
 var fs = require('fs');
 var path = require('path');
 var nunjucks = require('nunjucks');
+var markdownTag = require('nunjucks-markdown');
 
 var NunjucksLoader = nunjucks.Loader.extend({
     //Based off of the Nunjucks 'FileSystemLoader' 
@@ -49,23 +50,32 @@ var NunjucksLoader = nunjucks.Loader.extend({
 });
 
 module.exports = function(content) {
-	this.cacheable();
-  
-	var callback = this.async();
-	var opt = utils.parseQuery(this.query);
-
+	var opt = utils.getOptions(this);
 	var nunjucksSearchPaths = opt.searchPaths;
 	var nunjucksContext = opt.context;
-
-	var loader = new NunjucksLoader(nunjucksSearchPaths, function(path) {
-		this.addDependency(path);
-	}.bind(this));
-
-	var nunjEnv = new nunjucks.Environment(loader);
+    var nunjEnv = new nunjucks.Environment(nunjucks.FileSystemLoader(nunjucksSearchPaths));
 	nunjucks.configure(null, { watch: false });
+
+    if (opt.filters) {
+        Object.assign(nunjEnv.filters, opt.filters);
+    }
+    
+    if (opt.filters.md) {
+        markdownTag.register(nunjEnv, opt.filters.md);
+    }
+
+    nunjEnv.globals.now = function now(unixtime) {
+        return unixtime ? Date.now() : new Date();
+    };
+
+    nunjEnv.globals.ctx = function ctx(property, outputJSON) {
+        const value = typeof property === 'string' ? this.ctx[property] : this.ctx;
+        const stringify = outputJSON || (typeof property === 'boolean' && property);
+        return stringify ? nunjEnv.filters.json(value) : value;
+    };
 	
 	var template = nunjucks.compile(content, nunjEnv);
 	html = template.render(nunjucksContext);
 
-	callback(null, html);
+	return html;
 };
