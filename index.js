@@ -1,79 +1,36 @@
-var utils = require('loader-utils');
-var fs = require('fs');
-var path = require('path');
-var nunjucks = require('nunjucks');
-var markdownTag = require('nunjucks-markdown');
-
-var NunjucksLoader = nunjucks.Loader.extend({
-    //Based off of the Nunjucks 'FileSystemLoader' 
-
-    init: function(searchPaths, sourceFoundCallback) {
-    	this.sourceFoundCallback = sourceFoundCallback;
-        if(searchPaths) {
-            searchPaths = Array.isArray(searchPaths) ? searchPaths : [searchPaths];
-            // For windows, convert to forward slashes
-            this.searchPaths = searchPaths.map(path.normalize);
-        }
-        else {
-            this.searchPaths = ['.'];
-        }
-    },
-
-    getSource: function(name) {
-    	var fullpath = null;
-        var paths = this.searchPaths;
-
-        for(var i=0; i<paths.length; i++) {
-            var basePath = path.resolve(paths[i]);
-            var p = path.resolve(paths[i], name);
-
-            // Only allow the current directory and anything
-            // underneath it to be searched
-            if(p.indexOf(basePath) === 0 && fs.existsSync(p)) {
-                fullpath = p;
-                break;
-            }
-        }
-
-        if(!fullpath) {
-            return null;
-        }
-
-        this.sourceFoundCallback(fullpath);
-
-        return { 
-			src: fs.readFileSync(fullpath, 'utf-8'),
-			path: fullpath,
-			noCache: this.noCache 
-		};
-    }
-});
+var utils = require("loader-utils");
+var fs = require("fs");
+var path = require("path");
+var nunjucks = require("nunjucks");
+var markdownTag = require("nunjucks-markdown");
 
 module.exports = function(content) {
 	var opt = utils.getOptions(this);
 	var nunjucksSearchPaths = opt.searchPaths;
 	var nunjucksContext = opt.context;
-    var nunjEnv = new nunjucks.Environment(nunjucks.FileSystemLoader(nunjucksSearchPaths));
+	var nunjEnv = new nunjucks.Environment(
+		new nunjucks.FileSystemLoader(nunjucksSearchPaths)
+	);
 	nunjucks.configure(null, { watch: false });
 
-    if (opt.filters) {
-        Object.assign(nunjEnv.filters, opt.filters);
-    }
-    
-    if (opt.filters.md) {
-        markdownTag.register(nunjEnv, opt.filters.md);
-    }
+	if (opt.filters) {
+		Object.assign(nunjEnv.filters, opt.filters);
+	}
 
-    nunjEnv.globals.now = function now(unixtime) {
-        return unixtime ? Date.now() : new Date();
-    };
+	if (opt.filters.md) {
+		markdownTag.register(nunjEnv, opt.filters.md);
+	}
 
-    nunjEnv.globals.ctx = function ctx(property, outputJSON) {
-        const value = typeof property === 'string' ? this.ctx[property] : this.ctx;
-        const stringify = outputJSON || (typeof property === 'boolean' && property);
-        return stringify ? nunjEnv.filters.json(value) : value;
-    };
-	
+	nunjEnv.globals.now = function now(unixtime) {
+		return unixtime ? Date.now() : new Date();
+	};
+
+	nunjEnv.globals.ctx = function ctx(property, outputJSON) {
+		const value = typeof property === "string" ? this.ctx[property] : this.ctx;
+		const stringify = outputJSON || (typeof property === "boolean" && property);
+		return stringify ? nunjEnv.filters.json(value) : value;
+	};
+
 	var template = nunjucks.compile(content, nunjEnv);
 	html = template.render(nunjucksContext);
 
