@@ -5,7 +5,7 @@ var nunjucks = require("nunjucks");
 var markdownTag = require("nunjucks-markdown");
 
 module.exports = function(content) {
-	var opt = utils.getOptions(this);
+	var opt = utils.getOptions(this) || {};
 	var nunjucksSearchPaths = opt.searchPaths;
 	var nunjucksContext = opt.context;
 	var nunjEnv = new nunjucks.Environment(
