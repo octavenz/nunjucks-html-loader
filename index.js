@@ -11,13 +11,14 @@ module.exports = function(content) {
 	var nunjEnv = new nunjucks.Environment(
 		new nunjucks.FileSystemLoader(nunjucksSearchPaths)
 	);
+
 	nunjucks.configure(null, { watch: false });
 
 	if (opt.filters) {
 		Object.assign(nunjEnv.filters, opt.filters);
 	}
 
-	if (opt.filters.md) {
+	if (opt.filters && opt.filters.md) {
 		markdownTag.register(nunjEnv, opt.filters.md);
 	}
 
