@@ -25,10 +25,11 @@
   "main": "index.js",
   "dependencies": {
     "loader-utils": "^1.1.0",
-    "nunjucks": "^3.0.0",
+    "marked": "^0.5.2",
+    "nunjucks": "^3.1.6",
     "nunjucks-markdown": "^2.0.1"
   },
   "devDependencies": {
-    "prettier": "^1.10.2"
+    "prettier": "^1.15.3"
   }
 }

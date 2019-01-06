@@ -1,39 +1,62 @@
-var utils = require("loader-utils");
-var fs = require("fs");
-var path = require("path");
-var nunjucks = require("nunjucks");
-var markdownTag = require("nunjucks-markdown");
+const utils = require("loader-utils");
+const fs = require("fs");
+const path = require("path");
+const nunjucks = require("nunjucks");
+
+const markdown = require("nunjucks-markdown");
+const marked = require('marked');
+
 
 module.exports = function(content) {
-	var opt = utils.getOptions(this) || {};
-	var nunjucksSearchPaths = opt.searchPaths;
-	var nunjucksContext = opt.context;
-	var nunjEnv = new nunjucks.Environment(
-		new nunjucks.FileSystemLoader(nunjucksSearchPaths)
-	);
+  const defaultOpt = {
+    markdown: {
+      gfm: true,
+      tables: true,
+      breaks: false,
+      headerIds: true,
+      headerPrefix: 'heading-',
+      pendantic: false,
+      sanitize: true,
+      smartLists: true,
+      smartypants: false,
+    },
+  };
 
-	nunjucks.configure(null, { watch: false });
+  const webpackOpt = utils.getOptions(this) || {};
 
-	if (opt.filters) {
-		Object.assign(nunjEnv.filters, opt.filters);
-	}
+  const opt = { ...defaultOpt, ...webpackOpt }
 
-	if (opt.filters && opt.filters.md) {
-		markdownTag.register(nunjEnv, opt.filters.md);
-	}
+  const nunjucksSearchPaths = opt.searchPaths;
+  const nunjucksContext = opt.context;
+  const nunjEnv = new nunjucks.Environment(
+    new nunjucks.FileSystemLoader(nunjucksSearchPaths)
+  );
 
-	nunjEnv.globals.now = function now(unixtime) {
-		return unixtime ? Date.now() : new Date();
-	};
+  nunjucks.configure(null, { watch: false });
 
-	nunjEnv.globals.ctx = function ctx(property, outputJSON) {
-		const value = typeof property === "string" ? this.ctx[property] : this.ctx;
-		const stringify = outputJSON || (typeof property === "boolean" && property);
-		return stringify ? nunjEnv.filters.json(value) : value;
-	};
+  if (opt.filters) {
+    Object.assign(nunjEnv.filters, opt.filters);
+  }
 
-	var template = nunjucks.compile(content, nunjEnv);
-	html = template.render(nunjucksContext);
+  nunjEnv.globals.now = function now(unixtime) {
+    return unixtime ? Date.now() : new Date();
+  };
 
-	return html;
+  nunjEnv.globals.ctx = function ctx(property, outputJSON) {
+    const value = typeof property === "string" ? this.ctx[property] : this.ctx;
+    const stringify = outputJSON || (typeof property === "boolean" && property);
+    return stringify ? nunjEnv.filters.json(value) : value;
+  };
+
+  marked.setOptions({
+    renderer: new marked.Renderer(),
+    ...opt.markdown,
+  });
+
+  markdown.register(nunjEnv, marked);
+
+  const template = nunjucks.compile(content, nunjEnv);
+  html = template.render(nunjucksContext);
+
+  return html;
 };
